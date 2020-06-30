@@ -229,6 +229,15 @@ private:
 };
 
 /**
+  * Filters requests based on value of 'access_log_policy' key
+  */
+class LogKeyFilter : public Filter {
+    bool evaluate(const StreamInfo::StreamInfo& info, const Http::RequestHeaderMap& request_headers,
+                const Http::ResponseHeaderMap& response_headers,
+                const Http::ResponseTrailerMap& response_trailers) const override;
+};
+
+/**
  * Extension filter factory that reads from ExtensionFilter proto.
  */
 class ExtensionFilterFactory : public Config::TypedFactory {

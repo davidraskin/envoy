@@ -95,7 +95,6 @@ RoleBasedAccessControlFilter::decodeHeaders(Http::RequestHeaderMap& headers, boo
           Filters::Common::RBAC::DynamicMetadataKeysSingleton::get().EngineResultDenied;
     }
 
-
     if (!effective_policy_id.empty()) {
       *fields[Filters::Common::RBAC::DynamicMetadataKeysSingleton::get()
                   .ShadowEffectivePolicyIdField]
@@ -109,11 +108,22 @@ RoleBasedAccessControlFilter::decodeHeaders(Http::RequestHeaderMap& headers, boo
   const auto engine =
       config_->engine(callbacks_->route(), Filters::Common::RBAC::EnforcementMode::Enforced);
   if (engine != nullptr) {
-    //Set kRbacShouldLog to true if shouldLog; false otherwise
-    bool log_decision = engine->shouldLog(*callbacks_->connection(), headers, callbacks_->streamInfo(), nullptr);
-    // callbacks_->streamInfo().filterState()->setData("envoy.log", std::make_shared<RBACShouldLogState>(log_decision ? "yes" : "no"),
-    //       StreamInfo::FilterState::StateType::Mutable);
-    *fields["envoy.log"].mutable_string_value() = log_decision ? "yes": "no";
+    // Set "envoy.log" to true if shouldLog; false otherwise
+    auto log_dec =
+        engine->shouldLog(*callbacks_->connection(), headers, callbacks_->streamInfo(), nullptr);
+    if (log_dec != Filters::Common::RBAC::RoleBasedAccessControlEngine::LogDecision::Undecided) {
+      bool log_yes =
+          log_dec == Filters::Common::RBAC::RoleBasedAccessControlEngine::LogDecision::Yes;
+      *fields["envoy.log"].mutable_string_value() = log_yes ? "yes" : "no";
+
+      if (log_yes) {
+        ENVOY_LOG(debug, "request logged");
+        config_->stats().logged_.inc();
+      } else {
+        ENVOY_LOG(debug, "request not logged");
+        config_->stats().not_logged_.inc();
+      }
+    }
 
     if (engine->allowed(*callbacks_->connection(), headers, callbacks_->streamInfo(), nullptr)) {
       ENVOY_LOG(debug, "enforced allowed");
@@ -127,8 +137,9 @@ RoleBasedAccessControlFilter::decodeHeaders(Http::RequestHeaderMap& headers, boo
     }
   }
 
-  callbacks_->streamInfo().setDynamicMetadata(HttpFilterNames::get().Rbac, metrics);
-  ENVOY_LOG(debug, "no engine, allowed by default");
+  if (!metrics.fields().empty())
+    callbacks_->streamInfo().setDynamicMetadata(HttpFilterNames::get().Rbac, metrics);
+  // ENVOY_LOG(debug, "no engine, allowed by default");
   return result;
 }
 

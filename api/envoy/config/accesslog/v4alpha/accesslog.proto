@@ -53,7 +53,7 @@ message AccessLog {
   }
 }
 
-// [#next-free-field: 12]
+// [#next-free-field: 13]
 message AccessLogFilter {
   option (udpa.annotations.versioning).previous_message_type =
       "envoy.config.accesslog.v3.AccessLogFilter";
@@ -91,8 +91,10 @@ message AccessLogFilter {
     // gRPC status filter.
     GrpcStatusFilter grpc_status_filter = 10;
 
+    LogKeyFilter log_key_filter = 11;
+
     // Extension filter.
-    ExtensionFilter extension_filter = 11;
+    ExtensionFilter extension_filter = 12;
   }
 }
 
@@ -278,6 +280,11 @@ message GrpcStatusFilter {
   // If included and set to true, the filter will instead block all responses with a gRPC status or
   // inferred gRPC status enumerated in statuses, and allow all other responses.
   bool exclude = 2;
+}
+
+message LogKeyFilter {
+  option (udpa.annotations.versioning).previous_message_type =
+      "envoy.config.accesslog.v3.LogKeyFilter";
 }
 
 // Extension filter is statically registered at runtime.

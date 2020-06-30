@@ -76,6 +76,8 @@ FilterPtr FilterFactory::fromProto(const envoy::config::accesslog::v3::AccessLog
   case envoy::config::accesslog::v3::AccessLogFilter::FilterSpecifierCase::kGrpcStatusFilter:
     MessageUtil::validate(config, validation_visitor);
     return FilterPtr{new GrpcStatusFilter(config.grpc_status_filter())};
+  case envoy::config::accesslog::v3::AccessLogFilter::FilterSpecifierCase::kLogKeyFilter:
+    return FilterPtr{new LogKeyFilter()};
   case envoy::config::accesslog::v3::AccessLogFilter::FilterSpecifierCase::kExtensionFilter:
     MessageUtil::validate(config, validation_visitor);
     {
@@ -253,6 +255,24 @@ bool GrpcStatusFilter::evaluate(const StreamInfo::StreamInfo& info, const Http::
 Grpc::Status::GrpcStatus GrpcStatusFilter::protoToGrpcStatus(
     envoy::config::accesslog::v3::GrpcStatusFilter::Status status) const {
   return static_cast<Grpc::Status::GrpcStatus>(status);
+}
+
+bool LogKeyFilter::evaluate(const StreamInfo::StreamInfo& info, const Http::RequestHeaderMap&,
+                                  const Http::ResponseHeaderMap&,
+                                  const Http::ResponseTrailerMap&) const {
+
+  const auto& metadata = info.dynamicMetadata().filter_metadata();
+  const auto& com_metadata = metadata.find("envoy.common");
+  if (com_metadata != metadata.end()) {
+    const auto& key_it = com_metadata->second.fields().find("access_log_policy");
+    if (key_it != com_metadata->second.fields().end()) {
+      std::string access_log_policy = key_it->second.string_value();
+      return access_log_policy == "yes";
+    }
+  }
+
+  //If not set, do not filter log.
+  return true;                                  
 }
 
 InstanceSharedPtr AccessLogFactory::fromProto(const envoy::config::accesslog::v3::AccessLog& config,
