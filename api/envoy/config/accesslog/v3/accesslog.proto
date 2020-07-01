@@ -91,6 +91,7 @@ message AccessLogFilter {
     // gRPC status filter.
     GrpcStatusFilter grpc_status_filter = 10;
 
+    // Log key filter
     LogKeyFilter log_key_filter = 11;
 
     // Extension filter.
@@ -283,7 +284,10 @@ message GrpcStatusFilter {
   bool exclude = 2;
 }
 
+//Filters based on dynamic metadata log key
 message LogKeyFilter {
+  option (udpa.annotations.versioning).previous_message_type =
+      "envoy.config.filter.accesslog.v2.LogKeyFilter";
 }
 
 // Extension filter is statically registered at runtime.
